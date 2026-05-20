@@ -5,9 +5,10 @@ require('dotenv').config({ path: '.env' });
 const authRoutes = require('./routes/auth');
 
 const transactionRoutes = require('./routes/transactions');
-app.use('/api/transactions', transactionRoutes);
 
 const app = express();
+
+app.use('/api/transactions', transactionRoutes);
 app.use(cors());
 app.use(express.json());
 
