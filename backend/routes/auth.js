@@ -15,7 +15,10 @@ router.post('/register', async (req, res) => {
     .from('users')
     .insert([{ name, email, password_hash }])
     .select();
-
+  
+  console.log('Supabase error:', error); // tambahkan ini
+  console.log('Supabase data:', data);   // tambahkan ini
+  
   if (error) return res.status(400).json({ error: error.message });
   res.json({ message: 'Register berhasil' });
 });
