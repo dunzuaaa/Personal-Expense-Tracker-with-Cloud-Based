@@ -3,15 +3,26 @@ const cors = require('cors');
 require('dotenv').config({ path: '.env' });
 
 const authRoutes = require('./routes/auth');
-
 const transactionRoutes = require('./routes/transactions');
 
 const app = express();
 
-app.use('/api/transactions', transactionRoutes);
+// Middleware dulu
 app.use(cors());
 app.use(express.json());
 
-app.use('/api/auth', authRoutes);
+// Route untuk cek apakah backend hidup
+app.get('/', (req, res) => {
+  res.json({ message: 'Personal Expense Tracker API is running' });
+});
 
-app.listen(process.env.PORT, () => console.log(`Server running on port ${process.env.PORT}`));
+// Routes utama
+app.use('/api/auth', authRoutes);
+app.use('/api/transactions', transactionRoutes);
+
+// Port
+const PORT = process.env.PORT || 5000;
+
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
