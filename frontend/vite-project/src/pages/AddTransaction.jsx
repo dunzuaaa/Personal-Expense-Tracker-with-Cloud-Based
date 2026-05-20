@@ -17,6 +17,12 @@ export default function AddTransaction() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  const activeClass = {
+  income: "bg-emerald-600 text-white border-emerald-600",
+  expense: "bg-red-500 text-white border-red-500",
+  };
+  const inactiveClass = "bg-white text-gray-600 border-gray-200 hover:bg-gray-50";
+
   useEffect(() => {
     api.get("/api/categories")
       .then((data) => {
@@ -85,12 +91,8 @@ export default function AddTransaction() {
                   key={t}
                   type="button"
                   onClick={() => setForm((f) => ({ ...f, type: t }))}
-                  className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors
-                    ${form.type === t
-                      ? t === "income"
-                        ? "bg-emerald-600 text-white border-emerald-600"
-                        : "bg-red-500 text-white border-red-500"
-                      : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
+                  className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${
+                    form.type === t ? activeClass[t] : inactiveClass
                     }`}
                 >
                   {t === "income" ? "⬆️ Pemasukan" : "⬇️ Pengeluaran"}
