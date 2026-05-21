@@ -9,7 +9,14 @@ const summaryRoutes = require('./routes/summary');
 const app = express();
 
 // Middleware dulu
-app.use(cors());
+app.use(cors({
+  origin: [
+    'http://localhost:5173',
+    'https://personal-expense-tracker-alpha-drab.vercel.app'
+  ],
+  credentials: true
+}));
+
 app.use(express.json());
 
 // Route untuk cek apakah backend hidup
