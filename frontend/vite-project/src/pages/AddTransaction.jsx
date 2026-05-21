@@ -56,8 +56,8 @@ export default function AddTransaction() {
         amount: Number(form.amount),
         type: form.type,
         category: form.category,
+        description: form.note,
         date: form.date,
-        note: form.note,
       });
       navigate("/history");
     } catch (err) {

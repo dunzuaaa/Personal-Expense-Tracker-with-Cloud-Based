@@ -19,11 +19,34 @@ router.get('/', auth, async (req, res) => {
 
 // POST tambah transaksi
 router.post('/', auth, async (req, res) => {
-  const { type, amount, category_id, description, date } = req.body;
+  const { type, amount, category, date, note } = req.body;
+
+  // Cari category_id berdasarkan nama kategori
+  let category_id = null;
+  if (category) {
+    const { data: catData } = await supabase
+      .from('categories')
+      .select('category_id')
+      .eq('name', category)
+      .eq('user_id', req.user.user_id)
+      .single();
+
+    if (catData) {
+      category_id = catData.category_id;
+    } else {
+      // Kalau belum ada, insert dulu ke tabel categories
+      const { data: newCat } = await supabase
+        .from('categories')
+        .insert([{ name: category, user_id: req.user.user_id }])
+        .select()
+        .single();
+      category_id = newCat?.category_id;
+    }
+  }
 
   const { data, error } = await supabase
     .from('transactions')
-    .insert([{ user_id: req.user.user_id, type, amount, category_id, description, date }])
+    .insert([{ user_id: req.user.user_id, type, amount, category_id, description: note, date }])
     .select();
 
   if (error) return res.status(400).json({ error: error.message });
