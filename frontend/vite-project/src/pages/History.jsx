@@ -243,6 +243,9 @@ export default function History() {
   const [deletingId, setDeletingId] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
+  // State Pop-up Gambar Struk S3
+  const [activeReceipt, setActiveReceipt] = useState(null);
+
   const [filterCategory, setFilterCategory] = useState("");
   const [filterType, setFilterType] = useState("");
   const [search, setSearch] = useState("");
@@ -289,7 +292,7 @@ export default function History() {
     }
   }
 
-  // Edit saved — update local state tanpa refetch
+  // Edit saved
   function handleEditSaved(updated) {
     setTransactions((prev) =>
       prev.map((t) => (t.transaction_id === updated.transaction_id ? updated : t))
@@ -335,6 +338,36 @@ export default function History() {
           onConfirm={handleDeleteConfirm}
           onCancel={() => setDeletingId(null)}
         />
+      )}
+
+      {/* Pop-up Modal Mengintip Gambar Struk AWS S3 */}
+      {activeReceipt && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+          onClick={() => setActiveReceipt(null)}
+        >
+          <div 
+            className="w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden p-5 border border-gray-100"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-center mb-3">
+              <h3 className="text-sm font-bold text-gray-800">Bukti Nota / Struk</h3>
+              <button 
+                onClick={() => setActiveReceipt(null)}
+                className="w-7 h-7 flex items-center justify-center rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 transition-colors text-xs font-bold"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="bg-gray-50 rounded-xl overflow-hidden border border-gray-200 p-2 flex justify-center items-center max-h-[65vh]">
+              <img 
+                src={activeReceipt} 
+                alt="Struk Belanjaan S3" 
+                className="object-contain max-w-full max-h-[60vh] rounded-lg"
+              />
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Header */}
@@ -425,8 +458,19 @@ export default function History() {
                 </div>
               </div>
 
-              {/* Right: amount + action buttons */}
+              {/* Right: amount + action buttons + struk button */}
               <div className="flex items-center gap-3 flex-shrink-0 ml-4">
+                {/* Tombol Intip Struk dari S3 */}
+                {(t.receiptUrl || t.receipt_url) && (
+                  <button
+                    type="button"
+                    onClick={() => setActiveReceipt(t.receiptUrl || t.receipt_url)}
+                    className="px-2.5 py-1 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-md transition-all mr-1 shadow-sm flex items-center gap-1"
+                  >
+                    👁️ Struk
+                  </button>
+                )}
+
                 <span className={`text-sm font-semibold ${t.type === "income" ? "text-emerald-600" : "text-red-500"}`}>
                   {t.type === "income" ? "+" : "-"}{formatRupiah(t.amount)}
                 </span>

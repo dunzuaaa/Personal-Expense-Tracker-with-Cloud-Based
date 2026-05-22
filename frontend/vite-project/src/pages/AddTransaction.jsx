@@ -17,9 +17,12 @@ export default function AddTransaction() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  // State untuk menampung file gambar nota
+  const [selectedFile, setSelectedFile] = useState(null);
+
   const activeClass = {
-  income: "bg-emerald-600 text-white border-emerald-600",
-  expense: "bg-red-500 text-white border-red-500",
+    income: "bg-emerald-600 text-white border-emerald-600",
+    expense: "bg-red-500 text-white border-red-500",
   };
   const inactiveClass = "bg-white text-gray-600 border-gray-200 hover:bg-gray-50";
 
@@ -37,6 +40,12 @@ export default function AddTransaction() {
     setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
   }
 
+  function handleFileChange(e) {
+    if (e.target.files && e.target.files[0]) {
+      setSelectedFile(e.target.files[0]);
+    }
+  }
+
   async function handleSubmit(e) {
     e.preventDefault();
     setError("");
@@ -51,14 +60,38 @@ export default function AddTransaction() {
     }
 
     setLoading(true);
+    let receiptUrl = "";
+
     try {
+      // 1. Upload ke AWS S3 via Backend lokal jika file dipilih
+      if (selectedFile) {
+        const formData = new FormData();
+        formData.append("image", selectedFile);
+
+        const uploadRes = await fetch("http://localhost:5000/api/upload-struk", {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!uploadRes.ok) {
+          const errorData = await uploadRes.json().catch(() => ({}));
+          throw new Error(errorData.message || "Gagal mengunggah gambar nota ke AWS S3.");
+        }
+
+        const uploadData = await uploadRes.json();
+        receiptUrl = uploadData.url; 
+      }
+
+      // 2. Simpan Transaksi Lengkap ke Supabase
       await api.post("/api/transactions", {
         amount: Number(form.amount),
         type: form.type,
         category: form.category,
         description: form.note,
         date: form.date,
+        receiptUrl: receiptUrl, 
       });
+
       navigate("/history");
     } catch (err) {
       setError(err.message || "Gagal menyimpan transaksi.");
@@ -159,6 +192,24 @@ export default function AddTransaction() {
               placeholder="Misal: makan siang di kantin"
               className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
             />
+          </div>
+
+          {/* Input Upload Nota */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Upload Nota / Struk <span className="text-gray-400 font-normal">(opsional)</span>
+            </label>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleFileChange}
+              className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 cursor-pointer border border-gray-200 rounded-lg p-1.5"
+            />
+            {selectedFile && (
+              <p className="text-xs text-emerald-600 mt-1 font-medium">
+                ✓ File terpilih: {selectedFile.name}
+              </p>
+            )}
           </div>
 
           <div className="flex gap-3 pt-2">
