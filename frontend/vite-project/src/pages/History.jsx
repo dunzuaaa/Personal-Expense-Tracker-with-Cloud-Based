@@ -247,32 +247,32 @@ export default function History() {
   const [filterType, setFilterType] = useState("");
   const [search, setSearch] = useState("");
 
-  // Fetch categories once
-  useEffect(() => {
-    api.get("/api/categories")
-      .then((data) => {
-        if (Array.isArray(data) && data.length) {
-          setCategories(data);
-        } else {
-          setCategories(DEFAULT_CATEGORIES.map((name, i) => ({ category_id: String(i + 1), name })));
-        }
-      })
-      .catch(() => {
-        setCategories(DEFAULT_CATEGORIES.map((name, i) => ({ category_id: String(i + 1), name })));
-      });
-  }, []);
-
-  // Fetch transactions
-  const fetchTransactions = useCallback(() => {
+  // Fetch categories + transactions paralel — dijamin keduanya ready sebelum render
+  const fetchAll = useCallback(() => {
     setLoading(true);
     setError("");
-    api.get("/api/transactions")
-      .then((data) => setTransactions(Array.isArray(data) ? data : data.transactions || []))
-      .catch((e) => setError(e.message || "Gagal memuat transaksi."))
+
+    Promise.all([
+      api.get("/api/categories").catch(() => []),
+      api.get("/api/transactions").catch((e) => { throw e; }),
+      ])
+      .then(([cats, txs]) => {
+        // Normalize categories: pastikan category_id selalu string untuk perbandingan
+        const normalizedCats = Array.isArray(cats) && cats.length
+          ? cats.map((c) => ({ ...c, category_id: String(c.category_id) }))
+          : DEFAULT_CATEGORIES.map((name, i) => ({ category_id: String(i + 1), name }));
+
+        setCategories(normalizedCats);
+        setTransactions(Array.isArray(txs) ? txs : txs.transactions || []);
+      })
+      .catch((e) => setError(e.message || "Gagal memuat data."))
       .finally(() => setLoading(false));
   }, []);
 
-  useEffect(() => { fetchTransactions(); }, [fetchTransactions]);
+  useEffect(() => { fetchAll(); }, [fetchAll]);
+
+  // Alias untuk dipakai di tombol "Coba lagi"
+  const fetchTransactions = fetchAll;
 
   // Delete
   async function handleDeleteConfirm() {
@@ -300,7 +300,7 @@ export default function History() {
   // Client-side filtering
   const filtered = transactions.filter((t) => {
     if (filterType && t.type !== filterType) return false;
-    if (filterCategory && t.category_id !== filterCategory && t.category !== filterCategory) return false;
+    if (filterCategory && String(t.category_id) !== String(filterCategory) && t.category !== filterCategory) return false;
     if (search) {
       const q = search.toLowerCase();
       const inDesc = (t.description || "").toLowerCase().includes(q);
@@ -310,13 +310,51 @@ export default function History() {
     return true;
   });
 
+  // Lookup nama kategori — coerce ke String agar tidak gagal karena perbedaan tipe
+  // (backend bisa return category_id sebagai number maupun string)
   function getCategoryName(t) {
+    // Kalau backend sudah join dan return nama langsung, pakai itu
+    if (t.category_name) return t.category_name;
     if (t.category) return t.category;
-    const found = categories.find((c) => c.category_id === t.category_id);
+    // Lookup by id dengan String coercion di kedua sisi
+    const txCatId = String(t.category_id ?? "");
+    const found = categories.find((c) => String(c.category_id) === txCatId);
     return found?.name || "Tanpa kategori";
   }
 
   const hasFilter = filterCategory || filterType || search;
+
+  // ── Export CSV ──────────────────────────────────────────────────────────────
+  function exportCSV() {
+    if (filtered.length === 0) return;
+
+    const headers = ["Tanggal", "Jenis", "Kategori", "Nominal", "Catatan"];
+
+    const rows = filtered.map((t) => [
+      t.date?.slice(0, 10) || "",
+      t.type === "income" ? "Pemasukan" : "Pengeluaran",
+      getCategoryName(t),
+      Number(t.amount || 0),
+      `"${(t.description || "").replace(/"/g, '""')}"`,
+    ]);
+
+    const csvContent = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+
+    // BOM agar Excel/Numbers baca UTF-8 dengan benar
+    const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+
+    const timestamp = new Date().toISOString().slice(0, 10);
+    const filename = `transaksi_${timestamp}.csv`;
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
 
   return (
     <div className="p-8 space-y-6">
@@ -343,12 +381,22 @@ export default function History() {
           <h1 className="text-2xl font-bold text-gray-800">Riwayat Transaksi</h1>
           <p className="text-sm text-gray-500 mt-1">{filtered.length} transaksi ditemukan</p>
         </div>
-        <Link
-          to="/add"
-          className="px-4 py-2 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700 transition-colors"
-        >
-          + Tambah
-        </Link>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={exportCSV}
+            disabled={filtered.length === 0}
+            title={filtered.length === 0 ? "Tidak ada data untuk diekspor" : `Ekspor ${filtered.length} transaksi sebagai CSV`}
+            className="flex items-center gap-1.5 px-4 py-2 border border-gray-200 text-gray-600 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <span>⬇️</span> Export CSV
+          </button>
+          <Link
+            to="/add"
+            className="px-4 py-2 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700 transition-colors"
+          >
+            + Tambah
+          </Link>
+        </div>
       </div>
 
       {/* Filters */}

@@ -5,6 +5,7 @@ require('dotenv').config({ path: '.env' });
 const authRoutes = require('./routes/auth');
 const transactionRoutes = require('./routes/transactions');
 const summaryRoutes = require('./routes/summary');
+const categoryRoutes = require('./routes/categories');
 
 const app = express();
 
@@ -30,6 +31,7 @@ app.use('/api/summary', summaryRoutes);
 // Routes utama
 app.use('/api/auth', authRoutes);
 app.use('/api/transactions', transactionRoutes);
+app.use('/api/categories', categoryRoutes);
 
 // Port
 const PORT = process.env.PORT || 5000;
