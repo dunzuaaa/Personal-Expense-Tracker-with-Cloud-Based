@@ -5,6 +5,8 @@ require('dotenv').config({ path: '.env' });
 const authRoutes = require('./routes/auth');
 const transactionRoutes = require('./routes/transactions');
 const summaryRoutes = require('./routes/summary');
+const categoryRoutes = require('./routes/categories');
+
 // 1. TAMBAHAN: Import middleware upload S3 yang baru kita buat
 const upload = require('./middleware/upload'); 
 
@@ -29,6 +31,7 @@ app.get('/', (req, res) => {
 app.use('/api/summary', summaryRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/transactions', transactionRoutes);
+app.use('/api/categories', categoryRoutes);
 
 // 2. TAMBAHAN: Endpoint API untuk menerima upload foto struk dan melemparnya ke S3
 app.post('/api/upload-struk', upload.single('image'), (req, res) => {
