@@ -11,7 +11,8 @@ router.get('/', auth, async (req, res) => {
     .from('transactions')
     .select('*, categories(name)')
     .eq('user_id', req.user.user_id)
-    .order('date', { ascending: false });
+    .order('date', { ascending: false })
+    .order('created_at', { ascending: false });
 
   if (error) return res.status(400).json({ error: error.message });
   res.json(data);
@@ -19,38 +20,81 @@ router.get('/', auth, async (req, res) => {
 
 // POST tambah transaksi
 router.post('/', auth, async (req, res) => {
-  const { type, amount, category, date, note } = req.body;
+  try {
+    const {
+      amount,
+      type,
+      category,
+      note,
+      date,
+      receipt_url,
+      receiptUrl
+    } = req.body;
 
-  // Cari category_id berdasarkan nama kategori
-  let category_id = null;
-  if (category) {
-    const { data: catData } = await supabase
+    const finalReceiptUrl = receipt_url || receiptUrl || null;
+
+    if (!amount || !type || !category || !date) {
+      return res.status(400).json({ error: 'Data transaksi belum lengkap' });
+    }
+
+    // Cari category_id berdasarkan nama kategori
+    let category_id = null;
+
+    const { data: catData, error: catError } = await supabase
       .from('categories')
       .select('category_id')
       .eq('name', category)
       .eq('user_id', req.user.user_id)
-      .single();
+      .maybeSingle();
+
+    if (catError) {
+      return res.status(400).json({ error: catError.message });
+    }
 
     if (catData) {
       category_id = catData.category_id;
     } else {
-      // Kalau belum ada, insert dulu ke tabel categories
-      const { data: newCat } = await supabase
+      // Kalau kategori belum ada, buat kategori baru
+      const { data: newCat, error: newCatError } = await supabase
         .from('categories')
-        .insert([{ name: category, user_id: req.user.user_id }])
-        .select()
+        .insert([
+          {
+            name: category,
+            user_id: req.user.user_id
+          }
+        ])
+        .select('category_id')
         .single();
-      category_id = newCat?.category_id;
+
+      if (newCatError) {
+        return res.status(400).json({ error: newCatError.message });
+      }
+
+      category_id = newCat.category_id;
     }
+
+    // Simpan transaksi
+    const { data, error } = await supabase
+      .from('transactions')
+      .insert([
+        {
+          user_id: req.user.user_id,
+          amount,
+          type,
+          category_id,
+          description: note,
+          date,
+          receipt_url: finalReceiptUrl
+        },
+      ])
+      .select();
+
+    if (error) return res.status(400).json({ error: error.message });
+
+    res.json(data[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
-
-  const { data, error } = await supabase
-    .from('transactions')
-    .insert([{ user_id: req.user.user_id, type, amount, category_id, description: note, date }])
-    .select();
-
-  if (error) return res.status(400).json({ error: error.message });
-  res.json(data[0]);
 });
 
 // PUT edit transaksi
