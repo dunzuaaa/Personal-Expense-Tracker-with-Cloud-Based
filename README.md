@@ -95,4 +95,4 @@ cd /workspaces/Personal-Expense-Tracker-with-Cloud-Based/backend
 node index.js
 
 cd /workspaces/Personal-Expense-Tracker-with-Cloud-Based/frontend/vite-project
-npm run dev
+npm run dev 
